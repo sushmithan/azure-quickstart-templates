@@ -2,200 +2,329 @@
     "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
     "contentVersion": "1.0.0.0",
     "parameters": {
-        "publicIPAddressNameChefServer": {
-            "defaultValue": "",
-            "type": "String"
-        },
-        "publicIPDomainNameLabelChefServer": {
-            "defaultValue": "",
-            "type": "String"
-        },
-        "networkSecurityGroupNameChefServer": {
-            "defaultValue": "",
-            "type": "String"
-        },
-        "networkInterfaceNameChefServer": {
-            "defaultValue": "",
-            "type": "String"
-        },
-        "vmNameChefServer": {
-            "defaultValue": "",
-            "type": "String"
-        },
-        "vmAdminUsernameChefServer": {
-            "defaultValue": "",
-            "type": "String"
-        },
-        "vmAdminPasswordChefServer": {
-            "defaultValue": "",
-            "type": "SecureString"
-        },
-        "storageAccountName": {
-            "defaultValue": "",
-            "type": "String"
-        },
-        "vmStorageAccountContainerName": {
-            "defaultValue": "",
-            "type": "String"
-        },
-        "location": {
-            "type": "string",
-            "defaultValue": ""
-        },
-        "network-api-version": {
-            "type": "string",
-            "defaultValue": ""
-        },
-        "compute-api-version": {
-            "type": "string",
-            "defaultValue": ""
-        },
-        "tagvalues": {
-            "type": "object",
-            "defaultValue": {
-                "program": "p2p",
-                "project": "TrendMicro"
+        "adminUsername": {
+            "type": "String",
+            "metadata": {
+                "description": "User name for the Virtual Machine."
             }
         },
-        "publisherChefServer": {
-            "type": "string",
-            "defaultValue": ""
+        "adminPassword": {
+            "defaultValue": "",
+            "type": "SecureString",
+            "metadata": {
+                "description": "Password for the Virtual Machine."
+            }
         },
-        "offerChoosedChefServer": {
-            "type": "object",
-            "defaultValue": ""
-        },
-        "subnet2Ref": {
-            "type": "string",
-            "defaultValue": ""
-        },
-        "publicIPAddressType": {
-            "type": "string",
-            "defaultValue": ""
-        },
-        "chefUserName": {
-            "type": "string",
-            "defaultValue": ""
-        },
-        "chefUserFirstName": {
-            "type": "string",
-            "defaultValue": ""
-        },
-        "chefUserLastName": {
-            "type": "string",
-            "defaultValue": ""
-        },
-        "chefUserEmail": {
-            "type": "string",
-            "defaultValue": ""
-        },
-        "chefUserPassword": {
-            "type": "securestring",
-            "defaultValue": ""
-        },
-        "chefOrgShortName": {
-            "type": "string",
-            "defaultValue": ""
-        },
-        "chefOrgFullName": {
-            "type": "string",
-            "defaultValue": ""
-        },
-        "chefServerScriptUrl": {
-            "type": "string",
-            "defaultValue": ""
-        },
-        "publicIPDomainNameLabelOrchServer": {
-            "type": "string",
-            "defaultValue": ""
-        },
-        "trendmicroTags": {
-            "type": "object"
-        },
-        "chefSoftwareTags": {
-            "type": "object"
-        },
-        "splunkTags": {
-            "type": "object"
-        },
-        "quickstartTags": {
-            "type": "object"
+        "automateLicenseUri": {
+            "defaultValue": "https://github.com/chef-partners/omnibus-marketplace/blob/master/files/chef-marketplace-cookbooks/chef-marketplace/files/default/delivery.license?raw=true",
+            "type": "String",
+            "metadata": {
+                "description": "Chef Automate license file Uri"
+            }
         }
     },
     "variables": {
-        "singleQuote": "'",
-        "publicIPDomainNameLabelOrchServer": "[concat('http://',parameters('publicIPDomainNameLabelOrchServer'),'.',parameters('location'),'.cloudapp.azure.com:33001/key')]"
+        "apiVersions": {
+            "deployments": "2016-09-01",
+            "networkInterfaces": "2017-03-01",
+            "networkSecurityGroups": "2016-12-01",
+            "publicIPAddresses": "2017-03-01",
+            "storageAccounts": "2016-12-01",
+            "virtualMachineExtensions": "2017-03-30",
+            "virtualMachines": "2017-03-30",
+            "virtualNetworks": "2017-03-01"
+        },
+        "authenticationType": "password",
+        "imageProduct": "chef-automate",
+        "imageSKU": "byol",
+        "imageVersion": "latest",
+        "location": "[resourceGroup().Location]",
+        "publicIPAddressName": "automateservip",
+        "publicIPDnsName": "[concat('chef',uniquestring(resourceGroup().id))]",
+        "storageAccountName": "[concat(uniquestring(resourceGroup().id), 'chef')]",
+        "sshPublicKey": "",
+        "storageAccountType": "Standard_LRS",
+        "subnetName": "chefautomate-subnet",
+        "subnetPrefix": "10.0.0.0/24",
+        "virtualNetworkAddressPrefix": "10.0.0.0/16",
+        "virtualNetworkName": "chefvnet01",
+        "vmName": "chefautomate",
+        "vmSize": "Standard_D2_v2",
+        "baseUrl": "https://raw.githubusercontent.com/sudheermareddy/chefautomate/master",
+        "imagePublisher": "chef-software",
+        "nicName": "chefAutomateNic",
+        "osProfilepassword": {
+            "computerName": "[variables('vmName')]",
+            "adminUsername": "[parameters('adminUsername')]",
+            "adminPassword": "[parameters('adminPassword')]"
+        },
+        "osProfilesshPublicKey": {
+            "computerName": "[variables('vmName')]",
+            "adminUsername": "[parameters('adminUsername')]",
+            "linuxConfiguration": {
+                "disablePasswordAuthentication": true,
+                "ssh": {
+                    "publicKeys": [
+                        {
+                            "keyData": "[variables('sshPublicKey')]",
+                            "path": "[concat('/home/', parameters('adminUsername'), '/.ssh/authorized_keys')]"
+                        }
+                    ]
+                }
+            }
+        },
+        "osProfile": "[variables(concat('osProfile', variables('authenticationType')))]",
+        "providerGuid": "[toUpper('33194f91-eb5f-4110-827a-e95f640a9e46')]",
+        "rubyPath": "/opt/chef-marketplace/embedded/bin/ruby",
+        "scriptUrl": "[concat(variables('baseUrl'), '/automate_setup.rb')]",
+        "sgName": "chefAutomateSg",
+        "templateUrls": {
+            "publicIPAddress": "[concat(variables('baseUrl'), '/publicipaddress_new.json')]",
+            "storageAccount": "[concat(variables('baseUrl'), '/storageaccount_new.json')]",
+            "vnet": "[concat(variables('baseUrl'), '/vnet_new.json')]"
+        }
     },
-    "resources": [{
-            "type": "Microsoft.Compute/virtualMachines",
-            "name": "[parameters('vmNameChefServer')]",
-            "apiVersion": "[parameters('compute-api-version')]",
-            "location": "[parameters('location')]",
+    "resources": [
+        {
+            "type": "Microsoft.Resources/deployments",
+            "name": "StorageAccountSetup",
+            "apiVersion": "[variables('apiVersions').deployments]",
+            "properties": {
+                "mode": "Incremental",
+                "templateLink": {
+                    "uri": "[variables('templateUrls').storageAccount]",
+                    "contentVersion": "1.0.0.0"
+                },
+                "parameters": {
+                    "apiVersions": {
+                        "value": "[variables('apiVersions')]"
+                    },
+                    "location": {
+                        "value": "[variables('location')]"
+                    },
+                    "providerGuid": {
+                        "value": "[variables('providerGuid')]"
+                    },
+                    "storageAccountName": {
+                        "value": "[variables('storageAccountName')]"
+                    },
+                    "storageAccountType": {
+                        "value": "[variables('storageAccountType')]"
+                    }
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Network/networkSecurityGroups",
+            "name": "[variables('sgName')]",
+            "apiVersion": "[variables('apiVersions').networkSecurityGroups]",
+            "location": "[variables('location')]",
             "tags": {
-                "program": "[parameters('tagvalues').program]",
-                "project": "[parameters('tagvalues').project]",
-                "quickstartName": "[parameters('quickstartTags').name]",
-                "provider": "[parameters('chefSoftwareTags').provider]"
-            },
-            "plan": {
-                "name": "[parameters('offerChoosedChefServer').vmSku]",
-                "product": "[parameters('offerChoosedChefServer').product]",
-                "publisher": "[parameters('publisherChefServer')]"
+                "project": "Chef Automate",
+                "provider": "[variables('providerGuid')]"
             },
             "properties": {
-                "hardwareProfile": {
-                    "vmSize": "[parameters('offerChoosedChefServer').vmSize]"
-                },
-                "storageProfile": {
-                    "imageReference": {
-                        "publisher": "[parameters('publisherChefServer')]",
-                        "offer": "[parameters('offerChoosedChefServer').product]",
-                        "sku": "[parameters('offerChoosedChefServer').vmSku]",
-                        "version": "latest"
+                "securityRules": [
+                    {
+                        "name": "ssh",
+                        "properties": {
+                            "priority": 1010,
+                            "sourceAddressPrefix": "*",
+                            "protocol": "TCP",
+                            "destinationPortRange": "22",
+                            "access": "Allow",
+                            "direction": "Inbound",
+                            "sourcePortRange": "*",
+                            "destinationAddressPrefix": "*"
+                        }
                     },
-                    "osDisk": {
-                        "name": "[concat(parameters('vmNameChefServer'),'-osDisk')]",
-                        "createOption": "FromImage",
-                        "vhd": {
-                            "uri": "[concat('https', '://', parameters('storageAccountName'), '.blob.core.windows.net','/', parameters('vmStorageAccountContainerName'),'/', parameters('vmNameChefServer'),'-osdisk.vhd')]"
-                        },
-                        "caching": "ReadWrite"
+                    {
+                        "name": "https",
+                        "properties": {
+                            "priority": 1020,
+                            "sourceAddressPrefix": "*",
+                            "protocol": "TCP",
+                            "destinationPortRange": "443",
+                            "access": "Allow",
+                            "direction": "Inbound",
+                            "sourcePortRange": "*",
+                            "destinationAddressPrefix": "*"
+                        }
                     },
-                    "dataDisks": []
+                    {
+                        "name": "git",
+                        "properties": {
+                            "priority": 1030,
+                            "sourceAddressPrefix": "*",
+                            "protocol": "TCP",
+                            "destinationPortRange": "8989",
+                            "access": "Allow",
+                            "direction": "Inbound",
+                            "sourcePortRange": "*",
+                            "destinationAddressPrefix": "*"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Resources/deployments",
+            "name": "PublicIPAddressSetup",
+            "apiVersion": "[variables('apiVersions').deployments]",
+            "properties": {
+                "mode": "Incremental",
+                "templateLink": {
+                    "uri": "[variables('templateUrls').publicIPAddress]",
+                    "contentVersion": "1.0.0.0"
                 },
-                "osProfile": {
-                    "computerName": "[parameters('vmNameChefServer')]",
-                    "adminUsername": "[parameters('vmAdminUsernameChefServer')]",
-                    "linuxConfiguration": {
-                        "disablePasswordAuthentication": false
+                "parameters": {
+                    "apiVersions": {
+                        "value": "[variables('apiVersions')]"
                     },
-                    "secrets": [],
-                    "adminPassword": "[parameters('vmAdminPasswordChefServer')]"
+                    "dnsLabelPrefix": {
+                        "value": "[variables('publicIPDnsName')]"
+                    },
+                    "location": {
+                        "value": "[variables('location')]"
+                    },
+                    "providerGuid": {
+                        "value": "[variables('providerGuid')]"
+                    },
+                    "publicIPAddressName": {
+                        "value": "[variables('publicIPAddressName')]"
+                    },
+                    "publicIPAddressType": {
+                        "value": "Dynamic"
+                    }
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Resources/deployments",
+            "name": "VirtualNetworkSetup",
+            "apiVersion": "[variables('apiVersions').deployments]",
+            "properties": {
+                "mode": "Incremental",
+                "templateLink": {
+                    "uri": "[variables('templateUrls').vnet]",
+                    "contentVersion": "1.0.0.0"
                 },
-                "networkProfile": {
-                    "networkInterfaces": [{
-                        "id": "[resourceId('Microsoft.Network/networkInterfaces', parameters('networkInterfaceNameChefServer'))]"
-                    }]
+                "parameters": {
+                    "apiVersions": {
+                        "value": "[variables('apiVersions')]"
+                    },
+                    "location": {
+                        "value": "[variables('location')]"
+                    },
+                    "providerGuid": {
+                        "value": "[variables('providerGuid')]"
+                    },
+                    "subnetPrefix": {
+                        "value": "[variables('subnetPrefix')]"
+                    },
+                    "subnetName": {
+                        "value": "[variables('subnetName')]"
+                    },
+                    "virtualNetworkName": {
+                        "value": "[variables('virtualNetworkName')]"
+                    },
+                    "virtualNetworkAddressPrefix": {
+                        "value": "[variables('virtualNetworkAddressPrefix')]"
+                    }
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Network/networkInterfaces",
+            "name": "[variables('nicName')]",
+            "apiVersion": "[variables('apiVersions').networkInterfaces]",
+            "location": "[variables('location')]",
+            "tags": {
+                "project": "Chef Automate",
+                "provider": "[variables('providerGuid')]"
+            },
+            "properties": {
+                "ipConfigurations": [
+                    {
+                        "name": "ipconfig1",
+                        "properties": {
+                            "privateIPAllocationMethod": "Dynamic",
+                            "publicIPAddress": {
+                                "id": "[reference('PublicIPAddressSetup').outputs.publicIpId.value]"
+                            },
+                            "subnet": {
+                                "id": "[reference('VirtualNetworkSetup').outputs.subnetRef.value]"
+                            }
+                        }
+                    }
+                ],
+                "networkSecurityGroup": {
+                    "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('sgName'))]"
                 }
             },
             "dependsOn": [
-                "[resourceId('Microsoft.Network/networkInterfaces', parameters('networkInterfaceNameChefServer'))]"
+                "Microsoft.Resources/deployments/PublicIPAddressSetup",
+                "Microsoft.Resources/deployments/VirtualNetworkSetup",
+                "[concat('Microsoft.Network/networkSecurityGroups/', variables('sgName'))]"
             ]
-        }, {
-            "type": "Microsoft.Compute/virtualMachines/extensions",
-            "name": "[concat(parameters('vmNameChefServer'),'/', 'chefServerSetup')]",
-            "apiVersion": "[parameters('compute-api-version')]",
-            "location": "[parameters('location')]",
+        },
+        {
+            "type": "Microsoft.Compute/virtualMachines",
+            "name": "[variables('vmName')]",
+            "apiVersion": "[variables('apiVersions').virtualMachines]",
+            "location": "[variables('location')]",
+            "plan": {
+                "name": "[variables('imageSKU')]",
+                "product": "[variables('imageProduct')]",
+                "publisher": "[variables('imagePublisher')]"
+            },
             "tags": {
-                "program": "[parameters('tagvalues').program]",
-                "project": "[parameters('tagvalues').project]",
-                "quickstartName": "[parameters('quickstartTags').name]",
-                "provider": "[parameters('chefSoftwareTags').provider]"
+                "project": "Chef Automate",
+                "provider": "[variables('providerGuid')]"
+            },
+            "properties": {
+                "hardwareProfile": {
+                    "vmSize": "[variables('vmSize')]"
+                },
+                "osProfile": "[variables('osProfile')]",
+                "storageProfile": {
+                    "imageReference": {
+                        "publisher": "[variables('imagePublisher')]",
+                        "offer": "[variables('imageProduct')]",
+                        "sku": "[variables('imageSKU')]",
+                        "version": "[variables('imageVersion')]"
+                    },
+                    "osDisk": {
+                        "name": "[variables('vmName')]",
+                        "vhd": {
+                            "uri": "[concat(reference('StorageAccountSetup').outputs.blobEndpoint.value, 'vhds/', variables('vmName'), uniquestring(Deployment().Name), '.vhd')]"
+                        },
+                        "caching": "ReadWrite",
+                        "createOption": "FromImage"
+                    }
+                },
+                "networkProfile": {
+                    "networkInterfaces": [
+                        {
+                            "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('nicName'))]"
+                        }
+                    ]
+                }
             },
             "dependsOn": [
-                "[concat('Microsoft.Compute/virtualMachines/', parameters('vmNameChefServer'))]"
-
-            ],
+                "Microsoft.Resources/deployments/StorageAccountSetup",
+                "[concat('Microsoft.Network/networkInterfaces/', variables('nicName'))]"
+            ]
+        },
+        {
+            "type": "Microsoft.Compute/virtualMachines/extensions",
+            "name": "[concat(variables('vmName'),'/automate_setup')]",
+            "apiVersion": "[variables('apiVersions').virtualMachineExtensions]",
+            "location": "[variables('location')]",
+            "tags": {
+                "project": "Chef Automate",
+                "provider": "[variables('providerGuid')]"
+            },
             "properties": {
                 "publisher": "Microsoft.Azure.Extensions",
                 "type": "CustomScript",
@@ -203,137 +332,28 @@
                 "autoUpgradeMinorVersion": true,
                 "settings": {
                     "fileUris": [
-                        "[parameters('chefServerScriptUrl')]"
+                        "[variables('scriptUrl')]"
                     ],
-                    "commandToExecute": "[concat('bash chefserver.sh ', parameters('chefUserName'), ' ',parameters('chefUserFirstName'), ' ', parameters('chefUserLastName'), ' ',  parameters('chefUserEmail'), ' ',variables('singleQuote'), parameters('chefUserPassword'),variables('singleQuote'),' ',parameters('chefOrgShortName'),' ',variables('singleQuote'),parameters('chefOrgFullName'),variables('singleQuote'),' ',variables('publicIPDomainNameLabelOrchServer'))]"
-                }
-            }
-        }, {
-            "type": "Microsoft.Network/networkInterfaces",
-            "name": "[parameters('networkInterfaceNameChefServer')]",
-            "apiVersion": "[parameters('network-api-version')]",
-            "location": "[parameters('location')]",
-            "tags": {
-                "program": "[parameters('tagvalues').program]",
-                "project": "[parameters('tagvalues').project]",
-                "quickstartName": "[parameters('quickstartTags').name]",
-                "provider": "[parameters('chefSoftwareTags').provider]"
-            },
-            "properties": {
-                "ipConfigurations": [{
-                    "name": "ipconfig1",
-                    "properties": {
-                        "privateIPAllocationMethod": "Dynamic",
-                        "publicIPAddress": {
-                            "id": "[resourceId('Microsoft.Network/publicIPAddresses', parameters('publicIPAddressNameChefServer'))]"
-                        },
-                        "subnet": {
-                            "id": "[parameters('subnet2Ref')]"
-                        }
-                    }
-                }],
-                "dnsSettings": {
-                    "dnsServers": []
-                },
-                "enableIPForwarding": false,
-                "networkSecurityGroup": {
-                    "id": "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('networkSecurityGroupNameChefServer'))]"
+                    "commandToExecute": "[concat(variables('rubyPath'), ' ./automate_setup.rb --fqdn \"', reference('PublicIPAddressSetup').outputs.fqdn.value, '\" --license \"', parameters('automateLicenseUri'), '\"')]"
                 }
             },
             "dependsOn": [
-                "[resourceId('Microsoft.Network/publicIPAddresses', parameters('publicIPAddressNameChefServer'))]",
-
-                "[resourceId('Microsoft.Network/networkSecurityGroups', parameters('networkSecurityGroupNameChefServer'))]"
+                "[concat('Microsoft.Compute/virtualMachines/', variables('vmName'))]"
             ]
-        }, {
-            "type": "Microsoft.Network/networkSecurityGroups",
-            "name": "[parameters('networkSecurityGroupNameChefServer')]",
-            "apiVersion": "[parameters('network-api-version')]",
-            "location": "[parameters('location')]",
-            "tags": {
-                "program": "[parameters('tagvalues').program]",
-                "project": "[parameters('tagvalues').project]",
-                "quickstartName": "[parameters('quickstartTags').name]",
-                "provider": "[parameters('chefSoftwareTags').provider]"
-            },
-            "properties": {
-                "securityRules": [{
-                    "name": "ssh",
-                    "properties": {
-                        "protocol": "Tcp",
-                        "sourcePortRange": "*",
-                        "destinationPortRange": "22",
-                        "sourceAddressPrefix": "*",
-                        "destinationAddressPrefix": "*",
-                        "access": "Allow",
-                        "priority": 1010,
-                        "direction": "Inbound"
-                    }
-                }, {
-                    "name": "http",
-                    "properties": {
-                        "protocol": "Tcp",
-                        "sourcePortRange": "*",
-                        "destinationPortRange": "80",
-                        "sourceAddressPrefix": "*",
-                        "destinationAddressPrefix": "*",
-                        "access": "Allow",
-                        "priority": 1020,
-                        "direction": "Inbound"
-                    }
-                }, {
-                    "name": "https",
-                    "properties": {
-                        "protocol": "Tcp",
-                        "sourcePortRange": "*",
-                        "destinationPortRange": "443",
-                        "sourceAddressPrefix": "*",
-                        "destinationAddressPrefix": "*",
-                        "access": "Allow",
-                        "priority": 1030,
-                        "direction": "Inbound"
-                    }
-                }, {
-                    "name": "https8443",
-                    "properties": {
-                        "protocol": "Tcp",
-                        "sourcePortRange": "*",
-                        "destinationPortRange": "8443",
-                        "sourceAddressPrefix": "*",
-                        "destinationAddressPrefix": "*",
-                        "access": "Allow",
-                        "priority": 1040,
-                        "direction": "Inbound"
-                    }
-                }]
-            },
-            "dependsOn": []
-        }, {
-            "type": "Microsoft.Network/publicIPAddresses",
-            "name": "[parameters('publicIPAddressNameChefServer')]",
-            "apiVersion": "2015-06-15",
-            "location": "[parameters('location')]",
-            "tags": {
-                "program": "[parameters('tagvalues').program]",
-                "project": "[parameters('tagvalues').project]",
-                "quickstartName": "[parameters('quickstartTags').name]",
-                "provider": "[parameters('chefSoftwareTags').provider]"
-            },
-            "properties": {
-                "publicIPAllocationMethod": "[parameters('publicIPAddressType')]",
-                "dnsSettings": {
-                    "domainNameLabel": "[parameters('publicIPDomainNameLabelChefServer')]"
-                },
-                "idleTimeoutInMinutes": 4
-            },
-            "dependsOn": []
         }
-
     ],
-"outputs": {
-  "chefserverUri": {
-      "type": "string",
-      "value": "[concat('https://',reference(resourceId('Microsoft.Network/publicIPAddresses',parameters('publicIPAddressNameChefServer'))).dnsSettings.fqdn)]"
+    "outputs": {
+        "fqdn": {
+            "type": "String",
+            "value": "[reference('PublicIPAddressSetup').outputs.fqdn.value]"
+        },
+        "sshCommand": {
+            "type": "String",
+            "value": "[concat('ssh ', parameters('adminUsername'), '@', reference('PublicIPAddressSetup').outputs.fqdn.value)]"
+        },
+        "chefAutomateURL": {
+            "type": "String",
+            "value": "[concat('https://', reference('PublicIPAddressSetup').outputs.fqdn.value, '/biscotti/setup')]"
+        }
     }
-}
 }
